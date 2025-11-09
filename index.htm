@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft - Мобильное управление</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: manipulation;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+        
+        body {
+            background-color: #8ab4f8;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, #78A7FF 0%, #8ab4f8 100%);
+        }
+        
+        #world {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transform-origin: center center;
+        }
+        
+        .block {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border: 1px solid rgba(0, 0, 0, 0.3);
+            box-shadow: inset -2px -2px 0 rgba(0, 0, 0, 0.2), 
+                        inset 2px 2px 0 rgba(255, 255, 255, 0.2);
+        }
+        
+        .grass {
+            background: 
+                linear-gradient(135deg, #7CFC00 25%, transparent 25%) -5px 0,
+                linear-gradient(225deg, #7CFC00 25%, transparent 25%) -5px 0,
+                linear-gradient(315deg, #7CFC00 25%, transparent 25%),
+                linear-gradient(45deg, #7CFC00 25%, transparent 25%);
+            background-size: 10px 10px;
+            background-color: #5a7d34;
+        }
+        
+        .dirt {
+            background-color: #8B6914;
+            background-image: 
+                linear-gradient(30deg, #6b4f10 12%, transparent 12.5%, transparent 87%, #6b4f10 87.5%, #6b4f10),
+                linear-gradient(150deg, #6b4f10 12%, transparent 12.5%, transparent 87%, #6b4f10 87.5%, #6b4f10);
+            background-size: 10px 18px;
+            background-position: 0 0, 5px 9px;
+        }
+        
+        .stone {
+            background-color: #808080;
+            background-image: 
+                linear-gradient(30deg, #606060 12%, transparent 12.5%, transparent 87%, #606060 87.5%, #606060),
+                linear-gradient(150deg, #606060 12%, transparent 12.5%, transparent 87%, #606060 87.5%, #606060);
+            background-size: 8px 14px;
+            background-position: 0 0, 4px 7px;
+        }
+        
+        .wood {
+            background-color: #8B4513;
+            background-image: 
+                linear-gradient(90deg, #5d2d0b 50%, transparent 50%),
+                linear-gradient(90deg, #5d2d0b 50%, transparent 50%),
+                linear-gradient(0deg, #5d2d0b 50%, transparent 50%),
+                linear-gradient(0deg, #5d2d0b 50%, transparent 50%);
+            background-size: 5px 5px;
+            background-position: 0 0, 0 5px, 0 0, 5px 0;
+        }
+        
+        .selected {
+            outline: 2px dashed yellow;
+            outline-offset: -2px;
+        }
+        
+        #player {
+            position: absolute;
+            width: 30px;
+            height: 50px;
+            background-color: #3a5a8a;
+            border: 2px solid #1a3a6a;
+            z-index: 100;
+            transition: transform 0.1s;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            pointer-events: none;
+        }
+        
+        .control-pad {
+            width: 150px;
+            height: 150px;
+            background-color: rgba(58, 90, 138, 0.7);
+            border-radius: 75px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            gap: 5px;
+            padding: 15px;
+            pointer-events: auto;
+        }
+        
+        .control-btn {
+            background-color: rgba(90, 122, 181, 0.9);
+            border: 2px solid #1a3a6a;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 20px;
+            user-select: none;
+            box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+        }
+        
+        .control-btn:active {
+            transform: translate(1px, 1px);
+            box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3);
+            background-color: rgba(120, 152, 211, 0.9);
+        }
+        
+        #action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: auto;
+        }
+        
+        .action-btn {
+            width: 70px;
+            height: 70px;
+            background-color: rgba(58, 90, 138, 0.7);
+            border: 2px solid #1a3a6a;
+            border-radius: 35px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 24px;
+            user-select: none;
+            box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+        }
+        
+        .action-btn:active {
+            transform: translate(1px, 1px);
+            box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3);
+            background-color: rgba(120, 152, 211, 0.9);
+        }
+        
+        #break-btn {
+            background-color: rgba(200, 60, 60, 0.7);
+        }
+        
+        #break-btn:active {
+            background-color: rgba(230, 90, 90, 0.9);
+        }
+        
+        #inventory {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            gap: 10px;
+            background-color: rgba(58, 90, 138, 0.7);
+            padding: 10px;
+            border-radius: 10px;
+            border: 2px solid #1a3a6a;
+        }
+        
+        .inventory-slot {
+            width: 50px;
+            height: 50px;
+            background-color: rgba(90, 122, 181, 0.9);
+            border: 2px solid #1a3a6a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            user-select: none;
+        }
+        
+        .inventory-slot.selected {
+            background-color: rgba(120, 152, 211, 0.9);
+            border-color: yellow;
+        }
+        
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(58, 90, 138, 0.7);
+            padding: 10px;
+            border-radius: 10px;
+            border: 2px solid #1a3a6a;
+            color: white;
+            font-size: 14px;
+            max-width: 200px;
+        }
+        
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 18px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="world"></div>
+        <div id="player"></div>
+        
+        <div id="inventory">
+            <div class="inventory-slot selected">🌿</div>
+            <div class="inventory-slot">🪨</div>
+            <div class="inventory-slot">🪵</div>
+            <div class="inventory-slot">🧱</div>
+        </div>
+        
+        <div id="info-panel">
+            <div>Блоков сломано: <span id="blocks-broken">0</span></div>
+            <div>Позиция: <span id="player-position">0, 0</span></div>
+        </div>
+        
+        <div id="controls">
+            <div class="control-pad">
+                <div class="control-btn"></div>
+                <div class="control-btn" id="up-btn">↑</div>
+                <div class="control-btn"></div>
+                <div class="control-btn" id="left-btn">←</div>
+                <div class="control-btn" id="center-btn"></div>
+                <div class="control-btn" id="right-btn">→</div>
+                <div class="control-btn"></div>
+                <div class="control-btn" id="down-btn">↓</div>
+                <div class="control-btn"></div>
+            </div>
+            
+            <div id="action-buttons">
+                <div class="action-btn" id="jump-btn">↟</div>
+                <div class="action-btn" id="break-btn">⛏️</div>
+                <div class="action-btn" id="place-btn">🧱</div>
+            </div>
+        </div>
+        
+        <div id="message">
+            Добро пожаловать в Minecraft!<br>
+            Используйте джойстик для движения<br>
+            Нажмите ⛏️ чтобы ломать блоки<br>
+            Нажмите 🧱 чтобы ставить блоки
+            <br><br>
+            <button onclick="hideMessage()">Начать игру</button>
+        </div>
+    </div>
+
+    <script>
+        // Игровые переменные
+        const BLOCK_SIZE = 40;
+        const PLAYER_WIDTH = 30;
+        const PLAYER_HEIGHT = 50;
+        const WORLD_WIDTH = 20;
+        const WORLD_HEIGHT = 15;
+        
+        let playerX = 400;
+        let playerY = 300;
+        let blocksBroken = 0;
+        let selectedBlock = 0;
+        let selectedElement = null;
+        
+        // Элементы DOM
+        const world = document.getElementById('world');
+        const player = document.getElementById('player');
+        const blocksBrokenElement = document.getElementById('blocks-broken');
+        const playerPositionElement = document.getElementById('player-position');
+        const messageElement = document.getElementById('message');
+        
+        // Создаем мир
+        function createWorld() {
+            // Очищаем мир
+            world.innerHTML = '';
+            
+            // Создаем блоки
+            for (let y = 0; y < WORLD_HEIGHT; y++) {
+                for (let x = 0; x < WORLD_WIDTH; x++) {
+                    const block = document.createElement('div');
+                    block.className = 'block';
+                    block.style.left = (x * BLOCK_SIZE) + 'px';
+                    block.style.top = (y * BLOCK_SIZE) + 'px';
+                    
+                    // Определяем тип блока в зависимости от позиции
+                    if (y === WORLD_HEIGHT - 1) {
+                        // Нижний слой - камень
+                        block.classList.add('stone');
+                    } else if (y === WORLD_HEIGHT - 2) {
+                        // Предпоследний слой - земля
+                        block.classList.add('dirt');
+                    } else if (y === WORLD_HEIGHT - 3) {
+                        // Трава
+                        block.classList.add('grass');
+                    } else if (y < WORLD_HEIGHT - 3 && Math.random() > 0.7) {
+                        // Случайные блоки земли и камня
+                        if (Math.random() > 0.5) {
+                            block.classList.add('dirt');
+                        } else {
+                            block.classList.add('stone');
+                        }
+                    } else if (y < 5 && Math.random() > 0.9) {
+                        // Деревья
+                        block.classList.add('wood');
+                    }
+                    
+                    // Добавляем обработчик клика для выбора блока
+                    block.addEventListener('click', function() {
+                        if (selectedElement) {
+                            selectedElement.classList.remove('selected');
+                        }
+                        this.classList.add('selected');
+                        selectedElement = this;
+                    });
+                    
+                    world.appendChild(block);
+                }
+            }
+            
+            // Обновляем позицию игрока
+            updatePlayerPosition();
+            
+            // Показываем сообщение
+            messageElement.style.display = 'block';
+        }
+        
+        // Обновляем позицию игрока
+        function updatePlayerPosition() {
+            player.style.left = (playerX - PLAYER_WIDTH/2) + 'px';
+            player.style.top = (playerY - PLAYER_HEIGHT) + 'px';
+            playerPositionElement.textContent = `${Math.round(playerX)}, ${Math.round(playerY)}`;
+        }
+        
+        // Движение игрока
+        function movePlayer(dx, dy) {
+            playerX += dx;
+            playerY += dy;
+            
+            // Ограничиваем движение в пределах мира
+            playerX = Math.max(PLAYER_WIDTH/2, Math.min(playerX, WORLD_WIDTH * BLOCK_SIZE - PLAYER_WIDTH/2));
+            playerY = Math.max(PLAYER_HEIGHT, Math.min(playerY, WORLD_HEIGHT * BLOCK_SIZE));
+            
+            updatePlayerPosition();
+        }
+        
+        // Ломаем блок
+        function breakBlock() {
+            if (selectedElement) {
+                selectedElement.style.visibility = 'hidden';
+                blocksBroken++;
+                blocksBrokenElement.textContent = blocksBroken;
+                selectedElement = null;
+                
+                // Показываем эффект разрушения
+                const breakEffect = document.createElement('div');
+                breakEffect.style.position = 'absolute';
+                breakEffect.style.left = selectedElement ? selectedElement.style.left : '0';
+                breakEffect.style.top = selectedElement ? selectedElement.style.top : '0';
+                breakEffect.style.width = BLOCK_SIZE + 'px';
+                breakEffect.style.height = BLOCK_SIZE + 'px';
+                breakEffect.style.backgroundColor = 'rgba(255, 255, 0, 0.5)';
+                breakEffect.style.pointerEvents = 'none';
+                world.appendChild(breakEffect);
+                
+                setTimeout(() => {
+                    world.removeChild(breakEffect);
+                }, 300);
+            }
+        }
+        
+        // Ставим блок
+        function placeBlock() {
+            if (selectedElement) {
+                const blockTypes = ['grass', 'dirt', 'stone', 'wood'];
+                const newBlock = document.createElement('div');
+                newBlock.className = 'block ' + blockTypes[selectedBlock];
+                newBlock.style.left = selectedElement.style.left;
+                newBlock.style.top = selectedElement.style.top;
+                
+                newBlock.addEventListener('click', function() {
+                    if (selectedElement) {
+                        selectedElement.classList.remove('selected');
+                    }
+                    this.classList.add('selected');
+                    selectedElement = this;
+                });
+                
+                world.replaceChild(newBlock, selectedElement);
+                selectedElement = newBlock;
+            }
+        }
+        
+        // Прыжок
+        function jump() {
+            // Простая анимация прыжка
+            player.style.transform = 'translateY(-20px)';
+            setTimeout(() => {
+                player.style.transform = 'translateY(0)';
+            }, 300);
+        }
+        
+        // Скрываем сообщение
+        function hideMessage() {
+            messageElement.style.display = 'none';
+        }
+        
+        // Настройка управления
+        function setupControls() {
+            // Кнопки движения
+            document.getElementById('up-btn').addEventListener('touchstart', () => movePlayer(0, -10));
+            document.getElementById('down-btn').addEventListener('touchstart', () => movePlayer(0, 10));
+            document.getElementById('left-btn').addEventListener('touchstart', () => movePlayer(-10, 0));
+            document.getElementById('right-btn').addEventListener('touchstart', () => movePlayer(10, 0));
+            
+            // Действия
+            document.getElementById('jump-btn').addEventListener('touchstart', jump);
+            document.getElementById('break-btn').addEventListener('touchstart', breakBlock);
+            document.getElementById('place-btn').addEventListener('touchstart', placeBlock);
+            
+            // Выбор слота инвентаря
+            const inventorySlots = document.querySelectorAll('.inventory-slot');
+            inventorySlots.forEach((slot, index) => {
+                slot.addEventListener('touchstart', () => {
+                    inventorySlots.forEach(s => s.classList.remove('selected'));
+                    slot.classList.add('selected');
+                    selectedBlock = index;
+                });
+            });
+            
+            // Также добавляем обработчики для мыши (для тестирования на ПК)
+            document.getElementById('up-btn').addEventListener('mousedown', () => movePlayer(0, -10));
+            document.getElementById('down-btn').addEventListener('mousedown', () => movePlayer(0, 10));
+            document.getElementById('left-btn').addEventListener('mousedown', () => movePlayer(-10, 0));
+            document.getElementById('right-btn').addEventListener('mousedown', () => movePlayer(10, 0));
+            
+            document.getElementById('jump-btn').addEventListener('mousedown', jump);
+            document.getElementById('break-btn').addEventListener('mousedown', breakBlock);
+            document.getElementById('place-btn').addEventListener('mousedown', placeBlock);
+            
+            inventorySlots.forEach((slot, index) => {
+                slot.addEventListener('mousedown', () => {
+                    inventorySlots.forEach(s => s.classList.remove('selected'));
+                    slot.classList.add('selected');
+                    selectedBlock = index;
+                });
+            });
+        }
+        
+        // Инициализация игры
+        function initGame() {
+            createWorld();
+            setupControls();
+        }
+        
+        // Запускаем игру при загрузке страницы
+        window.onload = initGame;
+    </script>
+</body>
+  </html>
